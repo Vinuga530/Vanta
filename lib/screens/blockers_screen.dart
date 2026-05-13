@@ -113,14 +113,15 @@ class _BlockersScreenState extends State<BlockersScreen> {
     return Scaffold(
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics()),
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: const Text('Blockers'),
             border: null,
             backgroundColor: isDark
-                ? Colors.black.withOpacity(0.8)
-                : const Color(0xFFF2F2F7).withOpacity(0.8),
+                ? Colors.black.withValues(alpha: 0.8)
+                : const Color(0xFFF2F2F7).withValues(alpha: 0.8),
           ),
           SliverList(
             delegate: SliverChildListDelegate([
@@ -129,13 +130,20 @@ class _BlockersScreenState extends State<BlockersScreen> {
               // ─── APP BLOCKER ──────────────────────────────────────
               IOSGroup(
                 header: 'App Blocker',
+                footer:
+                    '${_blockedPackages.length} app(s) will be blocked when Focus Mode is active.',
                 children: [
                   if (_blockedPackages.isEmpty)
                     const IOSListTile(
-                      leading: Icon(CupertinoIcons.info_circle,
-                          color: CupertinoColors.systemGrey, size: 22),
-                      title: Text('No apps blocked',
-                          style: TextStyle(color: CupertinoColors.systemGrey)),
+                      leading: Icon(
+                        CupertinoIcons.info_circle,
+                        color: CupertinoColors.systemGrey,
+                        size: 22,
+                      ),
+                      title: Text(
+                        'No apps blocked',
+                        style: TextStyle(color: CupertinoColors.systemGrey),
+                      ),
                     ),
                   for (final pkg in _blockedPackages)
                     IOSListTile(
@@ -152,34 +160,45 @@ class _BlockersScreenState extends State<BlockersScreen> {
                               ? _getAppName(pkg)[0].toUpperCase()
                               : '?',
                           style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14),
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                       title: Text(_getAppName(pkg)),
-                      subtitle: Text(pkg,
-                          style: const TextStyle(fontSize: 11),
-                          overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                        pkg,
+                        style: const TextStyle(fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       trailing: CupertinoButton(
                         padding: EdgeInsets.zero,
-                        minSize: 24,
-                        child: const Icon(CupertinoIcons.minus_circle_fill,
-                            color: CupertinoColors.destructiveRed, size: 22),
+                        minimumSize: const Size(24, 24),
+                        child: const Icon(
+                          CupertinoIcons.minus_circle_fill,
+                          color: CupertinoColors.destructiveRed,
+                          size: 22,
+                        ),
                         onPressed: () => _removeBlockedApp(pkg),
                       ),
                     ),
                   IOSListTile(
-                    leading: const Icon(CupertinoIcons.plus_circle_fill,
-                        color: CupertinoColors.activeBlue, size: 30),
-                    title: const Text('Add Application',
-                        style: TextStyle(color: CupertinoColors.activeBlue)),
+                    leading: const Icon(
+                      CupertinoIcons.plus_circle_fill,
+                      color: CupertinoColors.activeBlue,
+                      size: 30,
+                    ),
+                    title: const Text(
+                      'Add Application',
+                      style: TextStyle(color: CupertinoColors.activeBlue),
+                    ),
                     onTap: () async {
                       final result = await Navigator.push<List<String>>(
                         context,
                         CupertinoPageRoute(
-                          builder: (_) => AppPickerScreen(
-                              alreadyBlocked: _blockedPackages),
+                          builder: (_) =>
+                              AppPickerScreen(alreadyBlocked: _blockedPackages),
                         ),
                       );
                       if (result != null) {
@@ -190,13 +209,13 @@ class _BlockersScreenState extends State<BlockersScreen> {
                     },
                   ),
                 ],
-                footer:
-                    '${_blockedPackages.length} app(s) will be blocked when Focus Mode is active.',
               ),
 
               // ─── KEYWORD BLOCKER ──────────────────────────────────
               IOSGroup(
                 header: 'Keyword Blocker',
+                footer:
+                    'Content containing these keywords will be blocked in browser and apps.',
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
@@ -207,7 +226,9 @@ class _BlockersScreenState extends State<BlockersScreen> {
                             controller: _keywordController,
                             placeholder: 'Enter keyword to block...',
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: isDark
                                   ? const Color(0xFF2C2C2E)
@@ -215,17 +236,20 @@ class _BlockersScreenState extends State<BlockersScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             style: TextStyle(
-                                color: isDark ? Colors.white : Colors.black,
-                                fontSize: 15),
+                              color: isDark ? Colors.white : Colors.black,
+                              fontSize: 15,
+                            ),
                             onSubmitted: _addKeyword,
                           ),
                         ),
                         CupertinoButton(
                           padding: const EdgeInsets.all(8),
-                          child: const Icon(CupertinoIcons.plus_circle_fill,
-                              color: CupertinoColors.activeBlue, size: 28),
-                          onPressed: () =>
-                              _addKeyword(_keywordController.text),
+                          child: const Icon(
+                            CupertinoIcons.plus_circle_fill,
+                            color: CupertinoColors.activeBlue,
+                            size: 28,
+                          ),
+                          onPressed: () => _addKeyword(_keywordController.text),
                         ),
                       ],
                     ),
@@ -240,20 +264,23 @@ class _BlockersScreenState extends State<BlockersScreen> {
                       title: Text(kw),
                       trailing: CupertinoButton(
                         padding: EdgeInsets.zero,
-                        minSize: 24,
-                        child: const Icon(CupertinoIcons.minus_circle_fill,
-                            color: CupertinoColors.destructiveRed, size: 22),
+                        minimumSize: const Size(24, 24),
+                        child: const Icon(
+                          CupertinoIcons.minus_circle_fill,
+                          color: CupertinoColors.destructiveRed,
+                          size: 22,
+                        ),
                         onPressed: () => _removeKeyword(kw),
                       ),
                     ),
                 ],
-                footer:
-                    'Content containing these keywords will be blocked in browser and apps.',
               ),
 
               // ─── VIEW BLOCKER ─────────────────────────────────────
               IOSGroup(
                 header: 'View Blocker',
+                footer:
+                    'View blockers use Accessibility Service to detect and dismiss specific in-app content.',
                 children: [
                   IOSListTile(
                     leading: const IOSIconBadge(
@@ -264,7 +291,7 @@ class _BlockersScreenState extends State<BlockersScreen> {
                     subtitle: const Text('Block short-form video feed'),
                     trailing: CupertinoSwitch(
                       value: _blockShorts,
-                      activeColor: CupertinoColors.activeBlue,
+                      activeTrackColor: CupertinoColors.activeBlue,
                       onChanged: (v) => _updateViewBlocker('shorts', v),
                     ),
                   ),
@@ -277,7 +304,7 @@ class _BlockersScreenState extends State<BlockersScreen> {
                     subtitle: const Text('Block Reels tab and feed'),
                     trailing: CupertinoSwitch(
                       value: _blockReels,
-                      activeColor: CupertinoColors.activeBlue,
+                      activeTrackColor: CupertinoColors.activeBlue,
                       onChanged: (v) => _updateViewBlocker('reels', v),
                     ),
                   ),
@@ -290,7 +317,7 @@ class _BlockersScreenState extends State<BlockersScreen> {
                     subtitle: const Text('Hide comment sections'),
                     trailing: CupertinoSwitch(
                       value: _blockComments,
-                      activeColor: CupertinoColors.activeBlue,
+                      activeTrackColor: CupertinoColors.activeBlue,
                       onChanged: (v) => _updateViewBlocker('comments', v),
                     ),
                   ),
@@ -303,13 +330,11 @@ class _BlockersScreenState extends State<BlockersScreen> {
                     subtitle: const Text('Block explore/discover feeds'),
                     trailing: CupertinoSwitch(
                       value: _blockExplore,
-                      activeColor: CupertinoColors.activeBlue,
+                      activeTrackColor: CupertinoColors.activeBlue,
                       onChanged: (v) => _updateViewBlocker('explore', v),
                     ),
                   ),
                 ],
-                footer:
-                    'View blockers use Accessibility Service to detect and dismiss specific in-app content.',
               ),
 
               const SizedBox(height: 40),

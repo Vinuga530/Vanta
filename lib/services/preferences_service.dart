@@ -3,12 +3,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 class PreferencesService {
   static late SharedPreferences _prefs;
   static bool _initialized = false;
+  static const _focusSessionStartKey = 'focusSessionStartMillis';
+  static const _focusSessionEndKey = 'focusSessionEndMillis';
+  static const _sessionGrayscaleKey = 'sessionGrayscaleEnabled';
+  static const _sessionOverlayKey = 'sessionOverlayEnabled';
+  static const _smartUnlockEndKey = 'smartUnlockEndMillis';
 
   // Initialize preferences
   static Future<void> init() async {
     if (!_initialized) {
       _prefs = await SharedPreferences.getInstance();
       _initialized = true;
+    }
+  }
+
+  static Future<void> reload() async {
+    if (_initialized) {
+      await _prefs.reload();
     }
   }
 
@@ -20,8 +31,8 @@ class PreferencesService {
   }
 
   static bool getFocusActive() {
-    if (!_initialized) return true;
-    return _prefs.getBool('focusActive') ?? true;
+    if (!_initialized) return false;
+    return _prefs.getBool('focusActive') ?? false;
   }
 
   // ─── App Blocked State ──────────────────────────────────────────────────────
@@ -46,6 +57,17 @@ class PreferencesService {
   static List<String> getBlockedPackages() {
     if (!_initialized) return [];
     return _prefs.getStringList('blockedPackages') ?? [];
+  }
+
+  static Future<void> setBlockedPackagesInitialized(bool initialized) async {
+    if (_initialized) {
+      await _prefs.setBool('blockedPackagesInitialized', initialized);
+    }
+  }
+
+  static bool getBlockedPackagesInitialized() {
+    if (!_initialized) return false;
+    return _prefs.getBool('blockedPackagesInitialized') ?? false;
   }
 
   // ─── Schedule Times ────────────────────────────────────────────────────────
@@ -127,7 +149,10 @@ class PreferencesService {
   }
 
   // ─── Per-App Hide Notifications ────────────────────────────────────────────
-  static Future<void> setAppHideNotifications(String appName, bool value) async {
+  static Future<void> setAppHideNotifications(
+    String appName,
+    bool value,
+  ) async {
     if (_initialized) {
       await _prefs.setBool('app_hideNotifications_$appName', value);
     }
@@ -259,5 +284,110 @@ class PreferencesService {
   static int getFocusTimerMinutes() {
     if (!_initialized) return 25;
     return _prefs.getInt('focusTimerMinutes') ?? 25;
+  }
+
+  static Future<void> setFocusSessionStartMillis(int? value) async {
+    if (!_initialized) return;
+    if (value == null) {
+      await _prefs.remove(_focusSessionStartKey);
+      return;
+    }
+    await _prefs.setInt(_focusSessionStartKey, value);
+  }
+
+  static int? getFocusSessionStartMillis() {
+    if (!_initialized) return null;
+    return _prefs.getInt(_focusSessionStartKey);
+  }
+
+  static Future<void> setFocusSessionEndMillis(int? value) async {
+    if (!_initialized) return;
+    if (value == null) {
+      await _prefs.remove(_focusSessionEndKey);
+      return;
+    }
+    await _prefs.setInt(_focusSessionEndKey, value);
+  }
+
+  static int? getFocusSessionEndMillis() {
+    if (!_initialized) return null;
+    return _prefs.getInt(_focusSessionEndKey);
+  }
+
+  static Future<void> setSessionGrayscaleEnabled(bool? value) async {
+    if (!_initialized) return;
+    if (value == null) {
+      await _prefs.remove(_sessionGrayscaleKey);
+      return;
+    }
+    await _prefs.setBool(_sessionGrayscaleKey, value);
+  }
+
+  static bool getSessionGrayscaleEnabled() {
+    if (!_initialized) return false;
+    return _prefs.getBool(_sessionGrayscaleKey) ?? false;
+  }
+
+  static Future<void> setSessionOverlayEnabled(bool? value) async {
+    if (!_initialized) return;
+    if (value == null) {
+      await _prefs.remove(_sessionOverlayKey);
+      return;
+    }
+    await _prefs.setBool(_sessionOverlayKey, value);
+  }
+
+  static bool getSessionOverlayEnabled() {
+    if (!_initialized) return false;
+    return _prefs.getBool(_sessionOverlayKey) ?? false;
+  }
+
+  static Future<void> setSmartUnlockEndMillis(int? value) async {
+    if (!_initialized) return;
+    if (value == null) {
+      await _prefs.remove(_smartUnlockEndKey);
+      return;
+    }
+    await _prefs.setInt(_smartUnlockEndKey, value);
+  }
+
+  static int? getSmartUnlockEndMillis() {
+    if (!_initialized) return null;
+    return _prefs.getInt(_smartUnlockEndKey);
+  }
+
+  static Future<void> clearFocusSessionState() async {
+    if (!_initialized) return;
+    await _prefs.remove(_focusSessionStartKey);
+    await _prefs.remove(_focusSessionEndKey);
+    await _prefs.remove(_sessionGrayscaleKey);
+    await _prefs.remove(_sessionOverlayKey);
+    await _prefs.remove(_smartUnlockEndKey);
+  }
+
+  static bool isSmartUnlockActive() {
+    final end = getSmartUnlockEndMillis();
+    if (end == null) return false;
+    return end > DateTime.now().millisecondsSinceEpoch;
+  }
+
+  static int getSmartUnlockRemainingSeconds() {
+    final end = getSmartUnlockEndMillis();
+    if (end == null) return 0;
+    final remainingMs = end - DateTime.now().millisecondsSinceEpoch;
+    return remainingMs <= 0 ? 0 : (remainingMs / 1000).ceil();
+  }
+
+  static bool isFocusSessionActive() {
+    final end = getFocusSessionEndMillis();
+    if (!getFocusActive() || end == null) return false;
+    return end > DateTime.now().millisecondsSinceEpoch;
+  }
+
+  static int getRemainingFocusSeconds() {
+    final end = getFocusSessionEndMillis();
+    if (!getFocusActive() || end == null) return 0;
+    final remainingMs = end - DateTime.now().millisecondsSinceEpoch;
+    return remainingMs <= 0 ? 0 : (remainingMs / 1000).ceil();
   }
 }

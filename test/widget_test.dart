@@ -1,24 +1,47 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_application_1/main.dart';
+import 'package:vanta/main.dart';
+import 'package:vanta/services/preferences_service.dart';
 
 void main() {
-  testWidgets('Focus Blocker app smoke test', (WidgetTester tester) async {
-    // Initialize SharedPreferences with default values for testing
-    SharedPreferences.setMockInitialValues({});
+  TestWidgetsFlutterBinding.ensureInitialized();
 
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const FocusBlockerApp());
-    await tester.pumpAndSettle();
+  const channel = MethodChannel('com.focusblocker/blocking');
 
-    // Verify that the app builds and displays the home screen
-    expect(find.text('Focus Blocker'), findsWidgets);
-    expect(find.byType(NavigationBar), findsOneWidget);
-    
-    // Verify that we can see the blocked apps section
-    expect(find.text('Blocked Apps'), findsOneWidget);
-    expect(find.text('Instagram'), findsOneWidget);
-    expect(find.text('TikTok'), findsOneWidget);
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({'focusActive': false});
+    await PreferencesService.init();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+          switch (call.method) {
+            case 'hasAccessibilityPermission':
+            case 'hasDeviceAdminPermission':
+              return true;
+            case 'getUsageStats':
+              return {'apps': []};
+            case 'getInstalledApps':
+              return <Map<String, String>>[];
+            default:
+              return null;
+          }
+        });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, null);
+  });
+
+  testWidgets('Vanta app smoke test', (WidgetTester tester) async {
+    await tester.pumpWidget(const VantaApp());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Home'), findsOneWidget);
+    expect(find.text('Blockers'), findsOneWidget);
+    expect(find.text('Stats'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Focus Mode'), findsOneWidget);
   });
 }

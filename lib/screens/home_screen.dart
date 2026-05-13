@@ -14,9 +14,10 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late bool focusActive;
-  bool _permissionChecked = false;
+  bool _isCheckingPermissions = false;
   int _todayMinutes = 0;
   int _appsBlocked = 0;
   int _totalOpens = 0;
@@ -27,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     focusActive = PreferencesService.getFocusActive();
     _appsBlocked = PreferencesService.getBlockedPackages().length;
 
@@ -38,15 +40,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _loadUsageData();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkPermission();
+      _checkRequiredPermissions();
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     _focusTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkRequiredPermissions();
+    }
   }
 
   Future<void> _loadUsageData() async {
@@ -61,17 +71,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (_) {}
   }
 
-  Future<void> _checkPermission() async {
-    if (_permissionChecked) return;
-    _permissionChecked = true;
+  Future<bool> _checkRequiredPermissions({bool showDialogs = true}) async {
+    if (_isCheckingPermissions) return false;
+    _isCheckingPermissions = true;
 
-    final hasPermission = await BlockService.hasAccessibilityPermission();
-    if (!hasPermission && mounted) {
-      _showPermissionDialog();
+    try {
+      final hasAccessibility = await BlockService.hasAccessibilityPermission();
+      if (!hasAccessibility) {
+        await _disableFocusModeIfNeeded();
+        if (mounted && showDialogs) {
+          _showAccessibilityDialog();
+        }
+        return false;
+      }
+
+      final hasDeviceAdmin = await BlockService.hasDeviceAdminPermission();
+      if (!hasDeviceAdmin) {
+        await _disableFocusModeIfNeeded();
+        if (mounted && showDialogs) {
+          _showDeviceAdminDialog();
+        }
+        return false;
+      }
+
+      return true;
+    } finally {
+      _isCheckingPermissions = false;
     }
   }
 
-  void _showPermissionDialog() {
+  Future<void> _disableFocusModeIfNeeded() async {
+    if (!focusActive) return;
+
+    _focusTimer?.cancel();
+    setState(() {
+      focusActive = false;
+      _focusSecondsRemaining = 0;
+    });
+    await PreferencesService.setFocusActive(false);
+    await BlockService.stopBlocking();
+  }
+
+  void _showAccessibilityDialog() {
     showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
@@ -97,7 +138,40 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _toggleFocus(bool value) {
+  void _showDeviceAdminDialog() {
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Device Admin Required'),
+        content: const Text(
+          'Vanta requires Android device administrator access before Focus Mode can be enabled.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Later'),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Grant Access'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              BlockService.requestDeviceAdminPermission();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _toggleFocus(bool value) async {
+    if (value) {
+      final hasPermissions = await _checkRequiredPermissions();
+      if (!hasPermissions) {
+        return;
+      }
+    }
+
     setState(() => focusActive = value);
     PreferencesService.setFocusActive(value);
     HapticFeedback.mediumImpact();
@@ -147,14 +221,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics()),
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           CupertinoSliverNavigationBar(
             largeTitle: const Text('Vanta'),
             border: null,
             backgroundColor: isDark
-                ? Colors.black.withOpacity(0.8)
-                : const Color(0xFFF2F2F7).withOpacity(0.8),
+                ? Colors.black.withValues(alpha: 0.8)
+                : const Color(0xFFF2F2F7).withValues(alpha: 0.8),
           ),
           SliverList(
             delegate: SliverChildListDelegate([
@@ -178,10 +253,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: (focusActive
-                                ? const Color(0xFF34C759)
-                                : const Color(0xFF636366))
-                            .withOpacity(0.3),
+                        color:
+                            (focusActive
+                                    ? const Color(0xFF34C759)
+                                    : const Color(0xFF636366))
+                                .withValues(alpha: 0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
@@ -198,12 +274,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ? 1.0 + (_pulseController.value * 0.1)
                                   : 1.0;
                               return Transform.scale(
-                                  scale: scale, child: child);
+                                scale: scale,
+                                child: child,
+                              );
                             },
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(
@@ -234,7 +312,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       ? 'Shields are Up'
                                       : 'Shields are Down',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -243,7 +321,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                           CupertinoSwitch(
                             value: focusActive,
-                            activeTrackColor: Colors.white.withOpacity(0.3),
+                            activeTrackColor: Colors.white.withValues(
+                              alpha: 0.3,
+                            ),
                             thumbColor: Colors.white,
                             onChanged: _toggleFocus,
                           ),
@@ -253,16 +333,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
+                            color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(CupertinoIcons.timer,
-                                  color: Colors.white, size: 18),
+                              const Icon(
+                                CupertinoIcons.timer,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 _formatTimer(_focusSecondsRemaining),
@@ -270,9 +355,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   color: Colors.white,
                                   fontSize: 24,
                                   fontWeight: FontWeight.w600,
-                                  fontFeatures: [
-                                    FontFeature.tabularFigures()
-                                  ],
+                                  fontFeatures: [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
@@ -299,8 +382,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   progressColor: progress > 0.75
                       ? CupertinoColors.destructiveRed
                       : progress > 0.5
-                          ? CupertinoColors.activeOrange
-                          : CupertinoColors.activeBlue,
+                      ? CupertinoColors.activeOrange
+                      : CupertinoColors.activeBlue,
                   strokeWidth: 12,
                 ),
               ),
@@ -348,12 +431,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: AnimatedStatCard(
                   title: 'Time Saved',
                   value: _formatDuration(
-                      (screenTimeLimit - _todayMinutes).clamp(0, 9999)),
+                    (screenTimeLimit - _todayMinutes).clamp(0, 9999),
+                  ),
                   icon: CupertinoIcons.clock_fill,
-                  gradientColors: const [
-                    Color(0xFF30D158),
-                    Color(0xFF63E688),
-                  ],
+                  gradientColors: const [Color(0xFF30D158), Color(0xFF63E688)],
                   subtitle: 'compared to 4h daily target',
                 ),
               ),
@@ -371,7 +452,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     trailing: Text(
                       '$_appsBlocked apps',
                       style: const TextStyle(
-                          color: CupertinoColors.systemGrey, fontSize: 15),
+                        color: CupertinoColors.systemGrey,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                   IOSListTile(
@@ -383,7 +466,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     trailing: Text(
                       '${PreferencesService.getBlockedKeywords().length} keywords',
                       style: const TextStyle(
-                          color: CupertinoColors.systemGrey, fontSize: 15),
+                        color: CupertinoColors.systemGrey,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                   IOSListTile(
@@ -395,7 +480,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     trailing: Text(
                       _countActiveViewBlockers(),
                       style: const TextStyle(
-                          color: CupertinoColors.systemGrey, fontSize: 15),
+                        color: CupertinoColors.systemGrey,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                 ],

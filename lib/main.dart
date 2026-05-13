@@ -23,14 +23,21 @@ void main() async {
 
   try {
     await PreferencesService.init();
+    await BlockService.initializeDefaults();
     final isDark = PreferencesService.getIsDarkMode();
     themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
   } catch (e) {
-    print('PreferencesService init warning: $e');
+    debugPrint('PreferencesService init warning: $e');
   }
 
   if (PreferencesService.getFocusActive()) {
-    BlockService.startBlocking();
+    final hasAccessibility = await BlockService.hasAccessibilityPermission();
+    final hasDeviceAdmin = await BlockService.hasDeviceAdminPermission();
+    if (hasAccessibility && hasDeviceAdmin) {
+      BlockService.startBlocking();
+    } else {
+      await PreferencesService.setFocusActive(false);
+    }
   }
 
   runApp(const VantaApp());
@@ -63,12 +70,18 @@ class VantaApp extends StatelessWidget {
               backgroundColor: Color(0xFFF2F2F7),
               surfaceTintColor: Colors.transparent,
               centerTitle: true,
-              titleTextStyle: TextStyle(color: Colors.black, fontWeight: FontWeight.w600, fontSize: 17),
+              titleTextStyle: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+              ),
             ),
             cardTheme: CardThemeData(
               color: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           darkTheme: ThemeData(
@@ -86,12 +99,18 @@ class VantaApp extends StatelessWidget {
               backgroundColor: Colors.black,
               surfaceTintColor: Colors.transparent,
               centerTitle: true,
-              titleTextStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 17),
+              titleTextStyle: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 17,
+              ),
             ),
             cardTheme: CardThemeData(
               color: const Color(0xFF1C1C1E),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           home: const MainShell(),
@@ -128,12 +147,26 @@ class _MainShellState extends State<MainShell> {
         onTap: (i) => setState(() => _currentIndex = i),
         activeColor: CupertinoColors.activeBlue,
         inactiveColor: CupertinoColors.systemGrey,
-        backgroundColor: isDark ? const Color(0xFF121212).withOpacity(0.9) : CupertinoColors.systemBackground.withOpacity(0.9),
+        backgroundColor: isDark
+            ? const Color(0xFF121212).withValues(alpha: 0.9)
+            : CupertinoColors.systemBackground.withValues(alpha: 0.9),
         items: const [
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.house_fill), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.shield_fill), label: 'Blockers'),
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.chart_bar_fill), label: 'Stats'),
-          BottomNavigationBarItem(icon: Icon(CupertinoIcons.gear_solid), label: 'Settings'),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.house_fill),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.shield_fill),
+            label: 'Blockers',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.chart_bar_fill),
+            label: 'Stats',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.gear_solid),
+            label: 'Settings',
+          ),
         ],
       ),
     );

@@ -37,10 +37,17 @@ class MainActivity : FlutterActivity() {
                     "hasUsagePermission" -> {
                         result.success(hasUsageStatsPermission())
                     }
+                    "hasDeviceAdminPermission" -> {
+                        result.success(isDeviceAdminPermissionGranted())
+                    }
                     "openUsageSettings" -> {
                         val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         startActivity(intent)
+                        result.success(true)
+                    }
+                    "requestDeviceAdminPermission" -> {
+                        requestDeviceAdminPermission()
                         result.success(true)
                     }
                     "updateBlockingConfig" -> {
@@ -148,6 +155,24 @@ class MainActivity : FlutterActivity() {
 
     private fun openAccessibilitySettings() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
+
+    private fun isDeviceAdminPermissionGranted(): Boolean {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val cn = ComponentName(this, VantaDeviceAdminReceiver::class.java)
+        return dpm.isAdminActive(cn)
+    }
+
+    private fun requestDeviceAdminPermission() {
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+        val cn = ComponentName(this, VantaDeviceAdminReceiver::class.java)
+        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, cn)
+        intent.putExtra(
+            DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+            "Vanta requires device administrator access to enforce Focus Mode on Android."
+        )
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
     }

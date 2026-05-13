@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Model for a single app's usage data.
@@ -50,8 +51,8 @@ class UsageService {
         'daysBack': 0,
       });
       return _parseDailyStats(result, DateTime.now());
-    } on PlatformException catch (e) {
-      print('Failed to get usage stats: $e');
+    } on Exception catch (e) {
+      debugPrint('Failed to get usage stats: $e');
       return DailyStats(
         date: DateTime.now(),
         totalMinutes: 0,
@@ -72,14 +73,11 @@ class UsageService {
         });
         final date = DateTime.now().subtract(Duration(days: i));
         weekStats.add(_parseDailyStats(result, date));
-      } on PlatformException {
+      } on Exception {
         final date = DateTime.now().subtract(Duration(days: i));
-        weekStats.add(DailyStats(
-          date: date,
-          totalMinutes: 0,
-          totalOpens: 0,
-          appUsages: [],
-        ));
+        weekStats.add(
+          DailyStats(date: date, totalMinutes: 0, totalOpens: 0, appUsages: []),
+        );
       }
     }
 
@@ -89,11 +87,16 @@ class UsageService {
   static DailyStats _parseDailyStats(dynamic result, DateTime date) {
     if (result == null) {
       return DailyStats(
-          date: date, totalMinutes: 0, totalOpens: 0, appUsages: []);
+        date: date,
+        totalMinutes: 0,
+        totalOpens: 0,
+        appUsages: [],
+      );
     }
 
     final map = Map<dynamic, dynamic>.from(result);
-    final appList = (map['apps'] as List<dynamic>?)
+    final appList =
+        (map['apps'] as List<dynamic>?)
             ?.map((e) => AppUsageData.fromMap(Map<dynamic, dynamic>.from(e)))
             .toList() ??
         [];
@@ -101,8 +104,7 @@ class UsageService {
     // Sort by usage descending
     appList.sort((a, b) => b.usageMinutes.compareTo(a.usageMinutes));
 
-    final totalMin =
-        appList.fold<int>(0, (sum, app) => sum + app.usageMinutes);
+    final totalMin = appList.fold<int>(0, (sum, app) => sum + app.usageMinutes);
     final totalOpens = appList.fold<int>(0, (sum, app) => sum + app.openCount);
 
     return DailyStats(
@@ -124,11 +126,10 @@ class UsageService {
           'appName': map['appName']?.toString() ?? '',
         };
       }).toList();
-      list.sort(
-          (a, b) => (a['appName'] ?? '').compareTo(b['appName'] ?? ''));
+      list.sort((a, b) => (a['appName'] ?? '').compareTo(b['appName'] ?? ''));
       return list;
-    } on PlatformException catch (e) {
-      print('Failed to get installed apps: $e');
+    } on Exception catch (e) {
+      debugPrint('Failed to get installed apps: $e');
       return [];
     }
   }

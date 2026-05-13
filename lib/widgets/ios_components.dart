@@ -54,7 +54,7 @@ class IOSGroup extends StatelessWidget {
                         ? const Color(0xFF38383A)
                         : const Color(0xFFC6C6C8),
                   ),
-              ]
+              ],
             ],
           ),
         ),
@@ -105,10 +105,7 @@ class IOSListTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           child: Row(
             children: [
-              if (leading != null) ...[
-                leading!,
-                const SizedBox(width: 16),
-              ],
+              if (leading != null) ...[leading!, const SizedBox(width: 16)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,11 +173,10 @@ class IOSSearchBar extends StatelessWidget {
         controller: controller,
         placeholder: placeholder,
         onChanged: onChanged,
-        style: TextStyle(
-          color: isDark ? Colors.white : Colors.black,
-        ),
-        backgroundColor:
-            isDark ? const Color(0xFF1C1C1E) : const Color(0xFFE5E5EA),
+        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+        backgroundColor: isDark
+            ? const Color(0xFF1C1C1E)
+            : const Color(0xFFE5E5EA),
       ),
     );
   }
@@ -217,7 +213,7 @@ class AnimatedStatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: gradientColors.first.withOpacity(0.3),
+            color: gradientColors.first.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 6),
           ),
@@ -228,12 +224,12 @@ class AnimatedStatCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: Colors.white.withOpacity(0.9), size: 20),
+              Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 20),
               const SizedBox(width: 8),
               Text(
                 title,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -255,7 +251,7 @@ class AnimatedStatCard extends StatelessWidget {
             Text(
               subtitle!,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 12,
               ),
             ),
@@ -386,12 +382,7 @@ class GlassCard extends StatelessWidget {
   final EdgeInsets? padding;
   final EdgeInsets? margin;
 
-  const GlassCard({
-    super.key,
-    required this.child,
-    this.padding,
-    this.margin,
-  });
+  const GlassCard({super.key, required this.child, this.padding, this.margin});
 
   @override
   Widget build(BuildContext context) {
@@ -402,18 +393,18 @@ class GlassCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.08)
-            : Colors.white.withOpacity(0.85),
+            ? Colors.white.withValues(alpha: 0.08)
+            : Colors.white.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.1)
-              : Colors.white.withOpacity(0.5),
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.5),
           width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
